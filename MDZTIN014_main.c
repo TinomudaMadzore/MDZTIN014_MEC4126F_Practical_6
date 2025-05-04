@@ -1,8 +1,8 @@
 /**
  * @file: main.c
- * @author: 
- * @student-number:
- * @ps-no:
+ * @author: Tinomuda Madzore
+ * @student-number: MDZTIN014
+ * @ps-no: 1878246
  *
  * Student solution for practical 6.
  */
@@ -57,9 +57,36 @@ void ResetClockTo48Mhz(void)
 }
 
 void init_student(void){
+    init_LCD();
+    lcd_command(CLEAR);
+    lcd_putstring("MDZTIN014");
 }
 
 void init_ADC(void){
+    // Sets up The ADC to read from channel 6 (PA6) in 8-bit resolution and discontinuous conversion mode
+
+    RCC -> AHBENR |= RCC_AHBENR_GPIOAEN;    // Enable the clock to GPIOA
+    GPIOA -> MODER |= GPIO_MODER_MODER6;    // Set PA6 to Analog
+    
+    RCC -> APB2ENR |= RCC_APB2ENR_ADCEN;    // Enable ADC clock
+    ADC1 -> CR &= ~ADC_CR_ADEN;             // Ensure ADC is disabled before configuration
+
+    ADC1->CR |= ADC_CR_ADCAL;               // Perform ADC calibration
+    while ((ADC1->CR & ADC_CR_ADCAL) != 0); // Wait until calibration finishes
+    
+    ADC1 -> CHSELR |= ADC_CHSELR_CHSEL6;    // Select Channel 6 on ADC
+    ADC1->CFGR1 &= ~ADC_CFGR1_RES;          // Clear resolution bits
+    ADC1 -> CFGR1 |= (ADC_CFGR1_RES_1 |     // Sets the ADC resolution to 8 bits
+                      ADC_CFGR1_WAIT |      // Enable wait mode
+                      ADC_CFGR1_ALIGN);     // Enable left align
+
+    ADC1 -> IER |= ADC_IER_EOCIE;           // Enable End of conversion interrupt
+
+    NVIC_EnableIRQ(ADC1_COMP_IRQn);         // Enable Interrupt on ADC
+    NVIC_SetPriority(ADC1_COMP_IRQn, 1);    // Lower priority as it only processes data and doesn’t change behaviour
+
+    ADC1->CR |= ADC_CR_ADEN; // Set ADEN=1 in ADC_CR register, actually starts ADC
+    while(!(ADC1 -> ISR & ADC_ISR_ADRDY)); // Wait for ADC to be ready to start converting
 }
 
 void init_GPIOB(void){
