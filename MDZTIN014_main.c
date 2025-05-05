@@ -67,30 +67,30 @@ void init_student(void){
 void init_ADC(void){
     // Sets up The ADC to read from channel 6 (PA6) in 8-bit resolution and discontinuous conversion mode
 
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN;  //Enable GPIOA clock
     GPIOA -> MODER |= GPIO_MODER_MODER6;    // Set PA6 to Analog
     
     RCC -> APB2ENR |= RCC_APB2ENR_ADCEN;    // Enable ADC clock
     ADC1 -> CR &= ~ADC_CR_ADEN;             // Ensure ADC is disabled before configuration
 
-    
-    
-    ADC1 -> CHSELR |= ADC_CHSELR_CHSEL6;    // Select Channel 6 on ADC
-    ADC1->CFGR1 &= ~ADC_CFGR1_RES;          // Clear resolution bits
-    ADC1 -> CFGR1 |= (ADC_CFGR1_RES_1 |     // Sets the ADC resolution to 8 bits
-                      ADC_CFGR1_WAIT |      // Enable wait mode
-                      ADC_CFGR1_ALIGN);     // Enable left align
-
+    ADC1 -> CFGR1 &= ~ADC_CFGR1_RES;          // Clear resolution bits
+    ADC1 -> CFGR1 |= ADC_CFGR1_RES_1;     // Sets the ADC resolution to 8 bits   
+    ADC1 -> CFGR1 |= ADC_CFGR1_ALIGN;     // Enable left align
+    ADC1 -> CFGR1 |= ADC_CFGR1_WAIT;      // Enable wait mode
+    ADC1 -> CFGR1 |= ADC_CFGR1_CONT; // Start continuous conversion
     ADC1 -> IER |= ADC_IER_EOCIE;           // Enable End of conversion interrupt
 
-    NVIC_EnableIRQ(ADC1_COMP_IRQn);         // Enable Interrupt on ADC
-
+    ADC1 -> CHSELR |= ADC_CHSELR_CHSEL6;    // Select Channel 6 on ADC
     ADC1->CR |= ADC_CR_ADCAL;               // Perform ADC calibration
     while ((ADC1->CR & ADC_CR_ADCAL) != 0); // Wait until calibration finishes
-    
+
     ADC1->CR |= ADC_CR_ADEN; // Set ADEN=1 in ADC_CR register, actually starts ADC
     while(!(ADC1 -> ISR & ADC_ISR_ADRDY)); // Wait for ADC to be ready to start converting
 
-    ADC1->CFGR1 |= ADC_CFGR1_CONT; // Start continuous conversion
+    NVIC_EnableIRQ(ADC1_COMP_IRQn);         // Enable Interrupt on ADC
+
+    // Start ADC conversion
+    ADC1->CR |= ADC_CR_ADSTART;
 }
 
 void init_GPIOB(void){
@@ -122,52 +122,54 @@ void init_GPIOA(void){
 }
 
 void init_TIM3 (void) {
-    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;  // Enable the TIM3 clock
 
-    GPIOB -> MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1);
-    GPIOB -> MODER |= (GPIO_MODER_MODER0_1 | GPIO_MODER_MODER1_1);
-    GPIOB -> AFR[0] &= ~((0x0F << GPIO_AFRL_AFRL0_Pos) | (0x0F << GPIO_AFRL_AFRL1_Pos));
-    GPIOB -> AFR[0] |= ((0x01 << GPIO_AFRL_AFRL0_Pos) | (0x01 << GPIO_AFRL_AFRL1_Pos));
+    // Set PB0 & PB1 to alternate function mode, AF1 for TIM3 ch3 and ch4, (set to AF1 to connect to the PWM channeels of TIM3)
+    GPIOB -> MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1); //clear bits first
+    GPIOB -> MODER |= (GPIO_MODER_MODER0_1 | GPIO_MODER_MODER1_1); // Set to AF mode
+    GPIOB -> AFR[0] &= ~((0xF << GPIO_AFRL_AFRL0_Pos) | (0xF << GPIO_AFRL_AFRL1_Pos)); //clears the existing AF setting.
+    GPIOB -> AFR[0] |= ((1 << GPIO_AFRL_AFRL0_Pos) | (1 << GPIO_AFRL_AFRL1_Pos)); // set both PB0 and PB1 to  AF1
 
-    TIM3 -> CCMR1 &= ~(TIM_CCMR1_OC1M | TIM_CCMR1_OC2M); // Corrected: Use CCMR1 for channels 1 & 2
-    TIM3 -> CCMR1 |= (6 << TIM_CCMR1_OC1M_Pos) | TIM_CCMR1_OC1PE |
-                     (6 << TIM_CCMR1_OC2M_Pos) | TIM_CCMR1_OC2PE; // PWM mode 1 for CH1 & CH2
+    TIM3 -> CCMR2 &= ~(TIM_CCMR2_OC3M | TIM_CCMR2_OC4M); //clear bits
+    TIM3 -> CCMR2 |= (6 << TIM_CCMR2_OC3M_Pos) | (6 << TIM_CCMR2_OC4M_Pos); // PWM mode 1 for CH1 & CH2
+    TIM3 -> CCMR2 |= TIM_CCMR2_OC3PE | TIM_CCMR2_OC4PE; // Preload enable
 
-    TIM3->CCER |= (TIM_CCER_CC1E | TIM_CCER_CC2E); // Enable output on CH1 and CH2 (PB0 & PB1 are usually CH1 & CH2 for TIM3)
-    TIM3->CR1 |= TIM_CR1_ARPE;
+    TIM3->CCER |= (TIM_CCER_CC3E | TIM_CCER_CC4E); // Enable output on CH3 and CH4
 
-    TIM3 -> PSC = 47;
-    TIM3 -> ARR = 99;
+    TIM3 -> PSC = 0;
+    TIM3 -> ARR = 4799; // 48Mhz/(4799+1) = 10khz
 
-    TIM3 -> CCR1 = 0; // PB0 Initial Duty (CH1)
-    TIM3 -> CCR2 = TIM3->ARR; // PB1 Initial duty anti-phase (CH2)
+    TIM3 -> CCR3 = 0; // PB0 Initial Duty (CH1)
+    TIM3 -> CCR4 = TIM3->ARR; // PB1 Initial duty anti-phase
 
-    TIM3 -> CR1 |= TIM_CR1_CEN;
+    TIM3 -> CR1 |= TIM_CR1_CEN; // Start the timer
 }
 
 void ADC1_COMP_IRQHandler(void){
-    if (ADC1 -> ISR & ADC_ISR_EOC){
-        uint8_t adc_val = ADC1 -> DR;            // Read 8-bit ADC result
+    if (ADC1 -> ISR & ADC_ISR_EOC){ // Check if its the end of a conversion
+        uint8_t adc_val = (ADC1->DR  >> 8);            // Read 8-bit ADC result, need to shift down 8 bits as its left aligned from DR
 
-        if (SW0_PRESSED == False && !(GPIOA->IDR & GPIO_IDR_0)) { // check if button is pressed
+        if (!SW0_PRESSED && !(GPIOA->IDR & GPIO_IDR_0)) { // check if button is pressed
             SW0_PRESSED = True;
 
-            GPIOB -> ODR &= ~0xFF;  // Clear PB0–PB7
+            GPIOB -> ODR &= ~0xFF;x  // Clear PB0–PB7
 
             // Reset PB2–PB7 to input mode
             GPIOB->MODER &= ~(GPIO_MODER_MODER2 | GPIO_MODER_MODER3 |
                               GPIO_MODER_MODER4 | GPIO_MODER_MODER5 |
                               GPIO_MODER_MODER6 | GPIO_MODER_MODER7);
-            init_TIM3();  // Initialise timer
+            init_TIM3();  // Initialise timer/PWM
         }
 
         if (!SW0_PRESSED) {
-            GPIOB->ODR = (GPIOB->ODR & 0xFF) | adc_val;  // Show ADC value on PB0–PB7
+            GPIOB->ODR = (GPIOB->ODR & ~0xFF) | adc_val;  // Show ADC value on PB0–PB7
         } else{
-            TIM3 -> CCR3 = adc_val;        // PB0 = CH3
-            TIM3 -> CCR4 = 255 - adc_val;  // PB1 = CH4 (anti-phase)
-        }
+            int16_t pwm_val = (adc_val * 4799) / 255; // Scale 0–255 to 0–4799
 
+            TIM3 -> CCR3 = pwm_val;        // PWM for PB0
+            TIM3 -> CCR4 = 4799 - pwm_val;  // PB1 (anti-phase)
+        }
+        // Clear EOC flag
         ADC1 -> ISR |= ADC_ISR_EOC;
 
     }
