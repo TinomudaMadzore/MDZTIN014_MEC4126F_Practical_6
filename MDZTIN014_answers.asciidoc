@@ -10,7 +10,8 @@ What type of ADC does the STM32F051x6 have? How does it operate, i.e. how does i
 
 [NOTE]
 ====
-Place your answer here.
+The STM32F051x6 uses a successive approximation register (SAR) ADC.
+It works by comparing the input voltage to a reference voltage in steps. It starts by estimating the middle value, then checks if the input is higher or lower, adjusting its guess each time until it finds the closest digital value.This process converts the analog voltage into a binary number, which the microcontroller can use.
 ====
 
 *Maximum Score = 3*
@@ -20,7 +21,8 @@ Write down two lines of code that are used to calibrate the ADC?
 
 [,C]
 ----
-place your code here
+ADC1->CR |= ADC_CR_ADCAL;                 // Start ADC calibration
+while (ADC1->CR & ADC_CR_ADCAL);          // Wait until calibration is complete
 ----
 
 *Maximum Score = 2*
@@ -30,7 +32,7 @@ What is the endianness of a word stored in the memory of an STM32F0x1 microcontr
 
 [NOTE]
 ====
-Place your answer here.
+It means that the least significant byte of a word is stored at the lowest address, and the most significant byte is stored at the highest address. It stores the bytes "backwards" compared to how we usually write the number
 ====
 
 *Maximum Score = 2*
@@ -40,7 +42,7 @@ The NVIC has priorities for all the possible interrupts on the SMT32Fx1. Which o
 
 [NOTE]
 ====
-Place your answer here.
+EXTI0_1 has higher priority than TIM2 on the STM32. EXTI0_1 has a lower IRQ number, which means it gets a higher priority.
 ====
 
 *Maximum Score = 1*
@@ -50,7 +52,7 @@ What is a racing condition and why are they undesirable?
 
 [NOTE]
 ====
-Place your answer here.
+That is when when two parts of a program try to access or change the same data at the same time, and the result depends on who gets there first. They’re undesirable because they can cause unpredictable behaviour or bugs that are hard to find and repeat.
 ====
 
 *Maximum Score = 2*
@@ -60,7 +62,7 @@ What is DMA and why is it useful?
 
 [NOTE]
 ====
-Place your answer here.
+DMA (Direct Memory Access) is a feature that lets peripherals transfer data directly to or from memory without using the CPU. It frees up the CPU to do other tasks.
 ====
 
 *Maximum Score = 1*

@@ -90,7 +90,7 @@ void init_ADC(void){
     ADC1->CR |= ADC_CR_ADEN; // Set ADEN=1 in ADC_CR register, actually starts ADC
     while(!(ADC1 -> ISR & ADC_ISR_ADRDY)); // Wait for ADC to be ready to start converting
 
-    ADC1->CR |= ADC_CR_ADSTART; // Start continuous conversion
+    ADC1->CFGR1 |= ADC_CFGR1_CONT; // Start continuous conversion
 }
 
 void init_GPIOB(void){
@@ -122,30 +122,27 @@ void init_GPIOA(void){
 }
 
 void init_TIM3 (void) {
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
 
-    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;                             // Enable TIM3 clock
-    
-    GPIOB -> MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1);     // Clear bits for PB0 & PB1
-    GPIOB -> MODER |= (GPIO_MODER_MODER0_1 | GPIO_MODER_MODER1_1);  // Set PB0 & PB1 as AF mode (connected to PWM)
-    GPIOB -> AFR[0] &= ~((0x0F << GPIO_AFRL_AFRL0_Pos) | (0x0F << GPIO_AFRL_AFRL1_Pos));  //clear AF bits
-    GPIOB -> AFR[0] |= ((0x01 << GPIO_AFRL_AFRL0_Pos) | (0x01 << GPIO_AFRL_AFRL1_Pos));   //AF1 
+    GPIOB -> MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1);
+    GPIOB -> MODER |= (GPIO_MODER_MODER0_1 | GPIO_MODER_MODER1_1);
+    GPIOB -> AFR[0] &= ~((0x0F << GPIO_AFRL_AFRL0_Pos) | (0x0F << GPIO_AFRL_AFRL1_Pos));
+    GPIOB -> AFR[0] |= ((0x01 << GPIO_AFRL_AFRL0_Pos) | (0x01 << GPIO_AFRL_AFRL1_Pos));
 
-    TIM3 -> CCMR2 &= ~(TIM_CCMR2_OC3M | TIM_CCMR2_OC4M); // clear bits
-    TIM3 -> CCMR2 |= (6 << TIM_CCMR2_OC3M_Pos) | TIM_CCMR2_OC3PE |
-                     (6 << TIM_CCMR2_OC4M_Pos) | TIM_CCMR2_OC4PE; // PWM mode 1 with preload enabled
+    TIM3 -> CCMR1 &= ~(TIM_CCMR1_OC1M | TIM_CCMR1_OC2M); // Corrected: Use CCMR1 for channels 1 & 2
+    TIM3 -> CCMR1 |= (6 << TIM_CCMR1_OC1M_Pos) | TIM_CCMR1_OC1PE |
+                     (6 << TIM_CCMR1_OC2M_Pos) | TIM_CCMR1_OC2PE; // PWM mode 1 for CH1 & CH2
 
-    TIM3->CCER |= (TIM_CCER_CC3E | TIM_CCER_CC4E); // Enable output on CH3 and CH4
-    TIM3->CR1 |= (TIM_CR1_ARPE | TIM_CR1_CEN);     // Enable timer with auto-reload preload
+    TIM3->CCER |= (TIM_CCER_CC1E | TIM_CCER_CC2E); // Enable output on CH1 and CH2 (PB0 & PB1 are usually CH1 & CH2 for TIM3)
+    TIM3->CR1 |= TIM_CR1_ARPE;
 
-    TIM3 -> PSC = 0;       
-    TIM3 -> ARR = 255;      //  8-bit res
+    TIM3 -> PSC = 47;
+    TIM3 -> ARR = 99;
 
-    TIM3 -> CCR3 = 0; //PB0 Initial Duty
-    TIM3 -> CCR4 = 255; //PB1 Initial duty anti-phase
+    TIM3 -> CCR1 = 0; // PB0 Initial Duty (CH1)
+    TIM3 -> CCR2 = TIM3->ARR; // PB1 Initial duty anti-phase (CH2)
 
-    TIM3 -> CR1 |= TIM_CR1_CEN; //start the timer
-    
-
+    TIM3 -> CR1 |= TIM_CR1_CEN;
 }
 
 void ADC1_COMP_IRQHandler(void){
@@ -165,15 +162,12 @@ void ADC1_COMP_IRQHandler(void){
         }
 
         if (!SW0_PRESSED) {
-            GPIOB->ODR = (GPIOB->ODR & ~0xFF) | adc_val;  // Show ADC value on PB0–PB7
+            GPIOB->ODR = (GPIOB->ODR & 0xFF) | adc_val;  // Show ADC value on PB0–PB7
         } else{
             TIM3 -> CCR3 = adc_val;        // PB0 = CH3
             TIM3 -> CCR4 = 255 - adc_val;  // PB1 = CH4 (anti-phase)
         }
-            //uint32_t duty = (((uint32_t)adc_val) * 100) / 255;  // 0–100% scale
 
-            //TIM3 -> CCR3 = duty;        // PB0 = CH3
-            //TIM3 -> CCR4 = 100 - duty;  // PB1 = CH4 (anti-phase)
         ADC1 -> ISR |= ADC_ISR_EOC;
 
     }
