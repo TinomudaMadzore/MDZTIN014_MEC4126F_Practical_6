@@ -124,14 +124,14 @@ void init_GPIOA(void){
 void init_TIM3 (void) {
     RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;  // Enable the TIM3 clock
 
-    // Set PB0 & PB1 to alternate function mode, AF1 for TIM3 ch3 and ch4, (set to AF1 to connect to the PWM channeels of TIM3)
+    // Set PB0 & PB1 to alternate function mode, AF1 for TIM3 ch3 and ch4, (set to AF1 to connect to the PWM channels of TIM3)
     GPIOB -> MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1); //clear bits first
     GPIOB -> MODER |= (GPIO_MODER_MODER0_1 | GPIO_MODER_MODER1_1); // Set to AF mode
     GPIOB -> AFR[0] &= ~((0xF << GPIO_AFRL_AFRL0_Pos) | (0xF << GPIO_AFRL_AFRL1_Pos)); //clears the existing AF setting.
     GPIOB -> AFR[0] |= ((1 << GPIO_AFRL_AFRL0_Pos) | (1 << GPIO_AFRL_AFRL1_Pos)); // set both PB0 and PB1 to  AF1
 
     TIM3 -> CCMR2 &= ~(TIM_CCMR2_OC3M | TIM_CCMR2_OC4M); //clear bits
-    TIM3 -> CCMR2 |= (6 << TIM_CCMR2_OC3M_Pos) | (6 << TIM_CCMR2_OC4M_Pos); // PWM mode 1 for CH1 & CH2
+    TIM3 -> CCMR2 |= (6 << TIM_CCMR2_OC3M_Pos) | (6 << TIM_CCMR2_OC4M_Pos); // PWM mode 1 for CH3 & CH4
     TIM3 -> CCMR2 |= TIM_CCMR2_OC3PE | TIM_CCMR2_OC4PE; // Preload enable
 
     TIM3->CCER |= (TIM_CCER_CC3E | TIM_CCER_CC4E); // Enable output on CH3 and CH4
@@ -139,8 +139,8 @@ void init_TIM3 (void) {
     TIM3 -> PSC = 0;
     TIM3 -> ARR = 4799; // 48Mhz/(4799+1) = 10khz
 
-    TIM3 -> CCR3 = 0; // PB0 Initial Duty (CH1)
-    TIM3 -> CCR4 = TIM3->ARR; // PB1 Initial duty anti-phase
+    TIM3 -> CCR3 = 0; // PB0 Initial Duty (CH3)
+    TIM3 -> CCR4 = TIM3->ARR; // PB1 Initial duty anti-phase (CH4)
 
     TIM3 -> CR1 |= TIM_CR1_CEN; // Start the timer
 }
