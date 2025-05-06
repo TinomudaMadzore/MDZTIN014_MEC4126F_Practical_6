@@ -152,7 +152,7 @@ void ADC1_COMP_IRQHandler(void){
         if (!SW0_PRESSED && !(GPIOA->IDR & GPIO_IDR_0)) { // check if button is pressed
             SW0_PRESSED = True;
 
-            GPIOB -> ODR &= ~0xFF;x  // Clear PB0–PB7
+            GPIOB -> ODR &= ~0xFF;  // Clear PB0–PB7
 
             // Reset PB2–PB7 to input mode
             GPIOB->MODER &= ~(GPIO_MODER_MODER2 | GPIO_MODER_MODER3 |
@@ -164,10 +164,9 @@ void ADC1_COMP_IRQHandler(void){
         if (!SW0_PRESSED) {
             GPIOB->ODR = (GPIOB->ODR & ~0xFF) | adc_val;  // Show ADC value on PB0–PB7
         } else{
-            int16_t pwm_val = (adc_val * 4799) / 255; // Scale 0–255 to 0–4799
 
-            TIM3 -> CCR3 = pwm_val;        // PWM for PB0
-            TIM3 -> CCR4 = 4799 - pwm_val;  // PB1 (anti-phase)
+            TIM3 -> CCR3 = adc_val;        // PWM for PB0
+            TIM3 -> CCR4 = 255 - adc_val;  // PB1 (anti-phase)
         }
         // Clear EOC flag
         ADC1 -> ISR |= ADC_ISR_EOC;
