@@ -164,9 +164,10 @@ void ADC1_COMP_IRQHandler(void){
         if (!SW0_PRESSED) {
             GPIOB->ODR = (GPIOB->ODR & ~0xFF) | adc_val;  // Show ADC value on PB0–PB7
         } else{
+            int16_t pwm_val = (adc_val * 4799) / 255; // Scale 0–255 to 0–4799
 
-            TIM3 -> CCR3 = adc_val;        // PWM for PB0
-            TIM3 -> CCR4 = 255 - adc_val;  // PB1 (anti-phase)
+            TIM3 -> CCR3 = pwm_val;        // PWM for PB0
+            TIM3 -> CCR4 = 4799 - pwm_val;  // PB1 (anti-phase)
         }
         // Clear EOC flag
         ADC1 -> ISR |= ADC_ISR_EOC;
